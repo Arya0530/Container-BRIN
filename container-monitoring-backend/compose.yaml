@@ -1,0 +1,90 @@
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: container_monitoring
+    ports:
+      - "55433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: container_monitoring_raw
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  
+  raw-writer:
+    build:
+      context: .
+      dockerfile: raw-writer/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      CLICKHOUSE_HOST: clickhouse
+    depends_on:
+      - rabbitmq
+      - clickhouse
+
+  preprocessing:
+    build:
+      context: .
+      dockerfile: preprocessing/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      CLICKHOUSE_HOST: clickhouse
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+    depends_on:
+      - clickhouse
+      - postgres
+
+  backend-api:
+    build:
+      context: .
+      dockerfile: backend-api/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+  clickhouse_data:
+  rabbitmq_data:

@@ -1,0 +1,16 @@
+
+{
+  "deviceID": "STM32-001",
+  "packetCounter": 101,
+  "gps": {
+    "lat": -7.7956,
+    "lon": 110.3695,
+    "alt": 120.5,
+    "speed": 0.0,
+    "sats": 8,
+    "timeUTC": "2026-10-22T03:00:00Z"
+  },
+  "door": "CLOSED",
+  "rssi": -51,
+  "snr": 8.7
+}

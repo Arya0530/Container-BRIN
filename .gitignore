@@ -1,0 +1,58 @@
+﻿# Environment files and secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+key.properties
+
+# Flutter and Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+android/local.properties
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Development files
+.idea/
+.vscode/
+node_modules/
+*.log
+*.bak
+*.tmp
+*.exe
+.DS_Store
+
+# Local databases and generated files
+*.sqlite
+*.sqlite3
+postgres-data/
+clickhouse-data/
+rabbitmq-data/
+data_before_*.txt
+screens_before_*.txt
+*_before_*.txt
+
+# Development backups
+*.before_*.txt
+*_before_*.txt
+
+# Additional backup files
+*.backup.txt
+
+# Generated Flutter desktop files
+**/flutter/generated_plugin_registrant.*
+**/flutter/generated_plugins.cmake

@@ -1,0 +1,11 @@
+# Keep sensitive configuration out of Docker builds.
+.env
+.env.*
+
+# Exclude Git metadata.
+.git/
+.gitignore
+
+# Exclude Python cache files.
+__pycache__/
+*.pyc
