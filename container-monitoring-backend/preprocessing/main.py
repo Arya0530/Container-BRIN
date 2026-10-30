@@ -32,6 +32,7 @@ clickhouse = clickhouse_connect.get_client(
 
 
 
+
 def validate_payload(payload):
     # Validate the required telemetry fields.
     if not isinstance(payload, dict):
@@ -51,8 +52,10 @@ def validate_payload(payload):
     if not isinstance(gps, dict):
         raise ValueError("Invalid GPS object")
 
-    lat = gps["lat"]
-    lon = gps["lon"]
+    # Support both mock and ESP32 GPS formats.
+    lat = gps.get("lat", gps.get("latitude"))
+    lon = gps.get("lon", gps.get("longitude"))
+    alt = gps.get("alt", gps.get("altitude"))
 
     if (
         type(lat) not in (int, float)
@@ -65,25 +68,52 @@ def validate_payload(payload):
     if door not in ("OPEN", "CLOSED"):
         raise ValueError("Invalid door status")
 
-    device_time = gps["timeUTC"]
+    # Prefer device timestamps that include timezone information.
+    recorded_at = None
+    device_time = gps.get("timeUTC")
 
-    if not isinstance(device_time, str):
-        raise ValueError("Invalid device timestamp")
+    if isinstance(device_time, str):
+        try:
+            parsed_time = datetime.fromisoformat(
+                device_time.replace("Z", "+00:00")
+            )
 
-    recorded_at = datetime.fromisoformat(
-        device_time.replace("Z", "+00:00")
-    )
+            if parsed_time.tzinfo is not None:
+                recorded_at = parsed_time.astimezone(timezone.utc)
 
-    if recorded_at.tzinfo is None:
-        raise ValueError("Device timestamp requires a timezone")
+        except ValueError:
+            pass
+
+    # Fall back to the gateway timestamp for hardware packets.
+    if recorded_at is None:
+        gateway_time = payload.get("gatewayReceivedAt")
+
+        if not isinstance(gateway_time, str):
+            raise ValueError("Missing valid telemetry timestamp")
+
+        recorded_at = datetime.fromisoformat(
+            gateway_time.replace("Z", "+00:00")
+        )
+
+        if recorded_at.tzinfo is None:
+            raise ValueError("Gateway timestamp requires a timezone")
+
+        recorded_at = recorded_at.astimezone(timezone.utc)
+
+    # Normalize GPS keys for the existing database insert logic.
+    normalized_gps = dict(gps)
+    normalized_gps["lat"] = lat
+    normalized_gps["lon"] = lon
+    normalized_gps["alt"] = alt
 
     return (
         device_id,
         counter,
-        gps,
+        normalized_gps,
         door,
-        recorded_at.astimezone(timezone.utc)
+        recorded_at
     )
+
 
 
 def fetch_raw_batch(cursor_time, cursor_id):
@@ -136,7 +166,7 @@ def process_event(cursor, event_id, raw_payload):
 
     container_id = container[0]
 
-    # Ignore duplicate telemetry using the unique index.
+    # Insert telemetry using the unique raw event ID.
     cursor.execute("""
         INSERT INTO public.telemetry_clean (
             container_id,
@@ -148,17 +178,16 @@ def process_event(cursor, event_id, raw_payload):
             door_status,
             rssi,
             snr,
-            packet_counter
+            packet_counter,
+            raw_event_id
         )
         VALUES (
             %s, %s, %s, %s, %s,
-            %s, %s, %s, %s, %s
+            %s, %s, %s, %s, %s,
+            %s
         )
-        ON CONFLICT (
-            container_id,
-            packet_counter
-        )
-        WHERE packet_counter IS NOT NULL
+        ON CONFLICT (raw_event_id)
+        WHERE raw_event_id IS NOT NULL
         DO NOTHING
     """, (
         container_id,
@@ -170,8 +199,10 @@ def process_event(cursor, event_id, raw_payload):
         door,
         payload.get("rssi"),
         payload.get("snr"),
-        counter
+        counter,
+        event_id
     ))
+
 
     return "inserted" if cursor.rowcount == 1 else "duplicate"
 
