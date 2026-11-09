@@ -17,6 +17,15 @@ class ContainerMonitoringApp extends StatelessWidget {
       title: 'BRIN Container Monitoring',
       debugShowCheckedModeBanner: false,
       theme: brinTheme(),
+      routes: {
+        '/dashboard': (_) => const DashboardPage(),
+        '/list': (_) => const ContainerListPage(),
+        '/add': (_) => const AddContainerPage(),
+        '/report': (_) => const ParameterReportPage(),
+        '/login': (_) => const LoginPage(),
+        '/settings': (_) => const InfoPage(title: 'Settings'),
+        '/help': (_) => const InfoPage(title: 'Help'),
+      },
       home: const DashboardPage(),
     );
   }

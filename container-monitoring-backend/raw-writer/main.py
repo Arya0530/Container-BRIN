@@ -2,6 +2,7 @@
 import os
 import sys
 import json
+import math
 from pathlib import Path
 
 import pika
@@ -39,6 +40,21 @@ clickhouse = clickhouse_connect.get_client(
     database="container_monitoring_raw"
 )
 
+FLOAT32_MAX = 3.4028234663852886e38
+
+def safe_float32(value):
+    if value is None:
+        return None
+    try:
+        number = float(value)
+    except (ValueError, TypeError, OverflowError):
+        return None
+    if not math.isfinite(number):
+        return None
+    if abs(number) > FLOAT32_MAX:
+        return None
+    return number
+
 def process_message(ch, method, properties, body):
     try:
         payload = json.loads(body)
@@ -55,13 +71,13 @@ def process_message(ch, method, properties, body):
             "raw_telemetry",
             [[
                 series,
-                gps.get("lat"),
-                gps.get("lon"),
-                gps.get("alt"),
-                gps.get("speed"),
+                gps.get("lat", gps.get("latitude")),
+                gps.get("lon", gps.get("longitude")),
+                safe_float32(gps.get("alt", gps.get("altitude"))),
+                safe_float32(gps.get("speed")),
                 payload.get("door"),
                 payload.get("rssi"),
-                payload.get("snr"),
+                safe_float32(payload.get("snr")),
                 body.decode("utf-8")
             ]],
             column_names=[

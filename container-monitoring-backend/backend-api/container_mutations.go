@@ -39,9 +39,18 @@ func registerContainerMutations(db *sql.DB) {
 		input.Series = strings.TrimSpace(input.Series)
 		input.DeviceID = strings.TrimSpace(input.DeviceID)
 		input.Company = strings.TrimSpace(input.Company)
+		input.Destination = strings.TrimSpace(input.Destination)
+		input.Contents = strings.TrimSpace(input.Contents)
+		input.Package = strings.TrimSpace(input.Package)
 
-		if input.Series == "" || input.DeviceID == "" || input.Company == "" {
-			http.Error(w, "Series, device_id, and company_name are required", http.StatusBadRequest)
+		if input.Series == "" ||
+			input.DeviceID == "" ||
+			input.Company == "" ||
+			input.Destination == "" ||
+			input.Contents == "" ||
+			input.Package == "" {
+
+			http.Error(w, "All fields are required", http.StatusBadRequest)
 			return
 		}
 

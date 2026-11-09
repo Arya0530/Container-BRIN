@@ -252,7 +252,8 @@ def process_batch(postgres):
                 ValueError,
                 KeyError,
                 TypeError,
-                json.JSONDecodeError
+                json.JSONDecodeError,
+                psycopg.errors.NumericValueOutOfRange
             ) as error:
                 cursor.execute(
                     "ROLLBACK TO SAVEPOINT telemetry_item"
